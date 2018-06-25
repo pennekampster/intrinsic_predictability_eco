@@ -505,7 +505,7 @@ label <- dd_ts$label
 
 p4 <- ggplot(data=dd_ts, aes(x=PE, y=nrmse_sqrt, label=label)) + 
   geom_point(aes(colour=type), alpha=.7) +
-  xlab("Permutation entropy") + 
+  xlab("Weighted permutation entropy") + 
   ylab("nRMSE (square root transformed)") +
   scale_colour_manual(values = c("black", "grey")) + 
   theme(legend.position = c(.1, .9)) + 
