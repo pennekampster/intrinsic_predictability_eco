@@ -15,7 +15,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE,
                       warning = FALSE,
                       message = FALSE,
-                      tidy.opts=list(width.cutoff=60),
+                      tidy.opts=list(width.cutoff=80),
                       tidy=TRUE)
 ```
 
@@ -34,9 +34,7 @@ library(dplyr)
 library(purrr)
 library(tidyr)
 library(rEDM)
-library(forecast)
 library(readxl)
-library(psych)
 library(lme4)
 library(lmerTest)
 library(cowplot)
@@ -60,7 +58,7 @@ Our conceptual framework as well as our simulation results suggest a relationshi
 
 The GPDD data was accessed via the rGDPP package. The database contains almost 5000 time series that vary widely in length and quality and is one of the go-to databases for ecologists to ask broad population dynamic questions. The rGPDD package contains tables with the time series information and additional information about the data sources, measurement units, and some fitted population dynamic parameters. For our purpose, we mainly use the "data" table, but added information about the source to control for potential non-independence in subsequent analyses. The plot shows a random sample of 12 time series from the GPDD.
 
-```{r GPDD, out.width='7in', fig.width=9, fig.height=9}
+```{r GPDD}
 dd <- gpdd_data
 
 # table with ts meta information
@@ -93,7 +91,9 @@ dd_GPDD_nest <- dd_GPDD %>% group_by(MainID, type) %>% nest()
 
 # add source info
 dd_GPDD_nest <-merge(dd_GPDD_nest, select(metainfo, MainID, source),  by=c("MainID"))
+```
 
+```{r, out.width='6in', fig.width=9, fig.height=9}
 # plot sample time series
 ggplot(data=subset(dd_GPDD, MainID %in% sample(dd_GPDD$MainID, 12))) + 
   geom_line(aes(x=time, y=abundance)) + 
@@ -140,7 +140,8 @@ dd2 <- gather(dd2, "species", abundance, 1:2)
 # next load data from microcosms
 # Becks et al. dataset
 dd3 <- read_excel(here::here("Data", "DATEN-Becksetal copy.xls"))
-dd3 <- filter(dd3, !(predator_abundance == 0 & prey1_abundance == 0 & prey2_abundance == 0))
+dd3 <- filter(dd3, !(predator_abundance == 0 & 
+                       prey1_abundance == 0 & prey2_abundance == 0))
 
 dd3 <- gather(dd3, "species", "abundance", 2:4)
 dd3$species <- gsub("_abundance", "", paste0(dd3$species, "_", dd3$replicate)) 
@@ -149,7 +150,9 @@ dd3$source <- "Becks et al. 2005"
 dd3 <- dplyr::rename(dd3, chemostat = dilution)
 
 dd_lab <- bind_rows(dd1, dd2, dd3)
-dd_lab$MainID <- as.numeric(as.factor(paste0(dd_lab$source, "_", dd_lab$chemostat, "_", dd_lab$species)))+4471
+dd_lab$MainID <- as.numeric(as.factor(paste0(dd_lab$source, "_", 
+                                             dd_lab$chemostat, "_", 
+                                             dd_lab$species)))+4471
 dd_lab$type <- "lab"
 
 dd_lab_nest <- dd_lab %>% group_by(MainID, type, source) %>% nest()
@@ -157,22 +160,31 @@ dd_lab_nest <- dd_lab %>% group_by(MainID, type, source) %>% nest()
 ```
 
 ### Hiltunen et al. 2014 data
-```{r out.width='7in', fig.width=9, fig.height=9}
-ggplot(data=dd1) + geom_line(aes(x=time, y=abundance, colour=species)) + 
+```{r out.width='6in', fig.width=9, fig.height=9}
+ggplot(data=dd1) + 
+  geom_line(aes(x=time, y=abundance, colour=species)) + 
   facet_wrap(~source, scales = "free", ncol=3) + 
-  scale_y_log10()
+  scale_y_log10()+
+  theme(legend.position = "bottom")
 ```
 
 ### Fussmann et al. 2000 data
 
-```{r out.width='7in', fig.width=9, fig.height=9}
-ggplot(data=dd2) + geom_line(aes(x=time, y=abundance, colour=species)) + 
-  facet_wrap(~dilution_rate, scales = "free", ncol=3) + scale_y_log10()
+```{r out.width='6in', fig.width=9, fig.height=9}
+ggplot(data=dd2) + 
+  geom_line(aes(x=time, y=abundance, colour=species)) + 
+  facet_wrap(~dilution_rate, scales = "free", ncol=3) + 
+  scale_y_log10()+
+  theme(legend.position = "bottom")
 ```
 
 ### Becks et al. 2005 data
-```{r out.width='7in', fig.width=9, fig.height=9}
-ggplot(data=dd3) + geom_line(aes(x=time, y=abundance, colour=species)) + facet_wrap(replicate~chemostat, scales = "free", ncol=3) + scale_y_log10()
+```{r out.width='6in', fig.width=9, fig.height=9}
+ggplot(data=dd3) + 
+  geom_line(aes(x=time, y=abundance, colour=species)) + 
+  facet_wrap(replicate~chemostat, scales = "free", ncol=3) + 
+  scale_y_log10() +
+  theme(legend.position = "bottom")
 ```
 
 ```{r}
@@ -185,10 +197,12 @@ dd_ts <- bind_rows(dd_GPDD_nest, dd_lab_nest)
 transform <- F
 if(transform){
 dd_ts$data <- lapply(1:nrow(dd_ts), function(x) 
-  mutate(dd_ts$data[[x]], abundance_sc = as.vector(scale(abundance, center=T, scale=T))))  
+  mutate(dd_ts$data[[x]], abundance_sc = 
+           as.vector(scale(abundance, center=T, scale=T))))  
 } else {
 dd_ts$data <- lapply(1:nrow(dd_ts), function(x) 
-  mutate(dd_ts$data[[x]], abundance_sc = as.vector(scale(abundance, center=F, scale=F))))  
+  mutate(dd_ts$data[[x]], abundance_sc = 
+           as.vector(scale(abundance, center=F, scale=F))))  
 }
 ```
 
@@ -200,24 +214,33 @@ We extracted some descriptive information about each of the time series. We calc
 
 ```{r}
 dd_ts$N <- unlist(lapply(dd_ts$data, nrow))
-dd_ts$finite_prop <- unlist(lapply(1:length(dd_ts$N), function(x) sum(is.finite(dd_ts$data[[x]]$abundance))))/dd_ts$N
-dd_ts$zeros <- unlist(lapply(1:length(dd_ts$N), function(x) sum(dd_ts$data[[x]]$abundance==0, na.rm = T )  ))
+dd_ts$finite_prop <- 
+  unlist(lapply(1:length(dd_ts$N), function(x) 
+    sum(is.finite(dd_ts$data[[x]]$abundance))))/dd_ts$N
+dd_ts$zeros <- 
+  unlist(lapply(1:length(dd_ts$N), function(x) 
+    sum(dd_ts$data[[x]]$abundance==0, na.rm = T )  ))
 dd_ts$zero_prop <- dd_ts$zeros/dd_ts$N
-dd_ts$ties_prop <- unlist(lapply(1:length(dd_ts$N), function(x) sum(diff(dd_ts$data[[x]]$abundance)==0, na.rm=T)))/dd_ts$N
-dd_ts$number_of_gaps <- unlist(lapply(1:length(dd_ts$N), function(x) sum(abs(diff(dd_ts$data[[x]]$time))>=2)))
+dd_ts$ties_prop <- 
+  unlist(lapply(1:length(dd_ts$N), function(x) 
+    sum(diff(dd_ts$data[[x]]$abundance)==0, na.rm=T)))/dd_ts$N
+dd_ts$number_of_gaps <- 
+  unlist(lapply(1:length(dd_ts$N), function(x) 
+    sum(abs(diff(dd_ts$data[[x]]$time))>=2)))
 ```
 
 We decided to only use time series with a minimum number of 30 observations and no gaps. This number is the minimum, as for very short time series PE may not be meaningful and also forecasting via EDM is limited. We also specified that the proportion of ties in the time series should be less than 15%.
 
 ```{r}
-dd_ts <- dd_ts %>% filter(N >= 30 & ties_prop < .15 & finite_prop > .9 & number_of_gaps == 0)
+dd_ts <- dd_ts %>% 
+  filter(N >= 30 & ties_prop < .15 & finite_prop > .9 & number_of_gaps == 0)
 ```
 
+## Adding NAs for missing data
 ```{r, eval = T}
-# Adding NAs for missing data
-
 # create date variable to identify missing time points
-dd_ts$data <- lapply(1:nrow(dd_ts), function(x) mutate(dd_ts$data[[x]], Date = ymd(paste0(as.character(time+1900), "-01-01"))))
+dd_ts$data <- lapply(1:nrow(dd_ts), function(x) 
+  mutate(dd_ts$data[[x]], Date = ymd(paste0(as.character(time+1900), "-01-01"))))
 
 # identify where time is very unregularily sampled and exclude
 dd_ts$var <- unlist(lapply(1:nrow(dd_ts), function(x) var(dd_ts$data[[x]]$Date)))
@@ -233,11 +256,22 @@ dd_ts$data <- lapply(1:nrow(dd_ts), function(x) mutate(dd_ts$data[[x]], time = 1
 We calculated the weighted permutation entropy for all the time series using a word length of 3 and tau of 1. Other values for word length and tau did not change the results. Moreover, using other tie breaking methods (e.g. average or random) did not change the results.
 
 ```{r}
-dd_ts <- dd_ts %>% mutate(PE = map_dbl(data, ~ tryCatch(PE(.$abundance, weighted=T, tau=1, word_length = 3, tie_method = "first"), error = function(err) NA)))
+dd_ts <- dd_ts %>% 
+  mutate(PE = map_dbl(data, ~ tryCatch(PE(.$abundance, weighted=T, tau=1, 
+                                          word_length = 3, tie_method = "first"), 
+                                       error = function(err) NA)))
 
 # uncomment to use other tie breaking methods when calculating PE
-#dd_ts <- dd_ts %>% mutate(PE_average = map_dbl(data, ~ PE(.$abundance, weighted=T, tau=1, word_length = 3, tie_method = "average")))
-#dd_ts <- dd_ts %>% mutate(PE_random = map_dbl(data, ~ PE(.$abundance, weighted=T, tau=1, word_length = 3, tie_method = "random")))
+# dd_ts <- dd_ts %>% 
+# mutate(PE_average = 
+#        map_dbl(data, ~ PE(.$abundance, 
+#                           weighted=T, tau=1, 
+#                           word_length = 3, tie_method = "average")))
+# dd_ts <- dd_ts %>% 
+# mutate(PE_random = 
+#          map_dbl(data, ~ PE(.$abundance, 
+#                             weighted=T, tau=1, word_length = 3, 
+#                             tie_method = "random")))
 ```
 
 ### Distribution of PE values over lab and field data
@@ -245,7 +279,9 @@ dd_ts <- dd_ts %>% mutate(PE = map_dbl(data, ~ tryCatch(PE(.$abundance, weighted
 The following graph shows the distribution of permutation entropy values for field (GPDD) and lab studies.
 
 ```{r}
-ggplot(data=dd_ts, aes(x=PE, group=type, fill=type)) + geom_density(alpha=.3) + theme(legend.position = "bottom")
+ggplot(data=dd_ts, aes(x=PE, group=type, fill=type)) + 
+  geom_density(alpha=.3) + 
+  theme(legend.position = "bottom")
 ```
 
 # Forecasting via simplex and s-map projection (using a split dataset)
@@ -273,22 +309,27 @@ for (i in 1:nrow(dd_ts)){
   # define steps ahead forecast (based on split)
   step_ahead <- as.integer(nrow(ts_select)/split)
   
-  simplex_fit <- simplex(ts_select$abundance_sc, 
+  simplex_fit <- 
+    simplex(ts_select$abundance_sc, 
                          lib = c(1, (length(ts_select$abundance_sc)-step_ahead)),  
                          stats_only = T, E = 1:10, norm_type = c("L2 norm"))
 
-  E_hat_rho <- simplex_fit[which(max(simplex_fit$rho, na.rm = T)==simplex_fit$rho)[1], ]$E
+  E_hat_rho <- 
+    simplex_fit[which(max(simplex_fit$rho, na.rm = T)==simplex_fit$rho)[1], ]$E
 
-  plot(simplex_fit$E, simplex_fit$rho, type="l", xlab = "Embedding dimension (E)", ylab="Forecast skill (rho)")
+  plot(simplex_fit$E, simplex_fit$rho, type="l", 
+       xlab = "Embedding dimension (E)", ylab="Forecast skill (rho)")
   abline(v=E_hat_rho, col="red", lty=2)
   
   smap_fit <- s_map(ts_select$abundance_sc, 
                     lib = c(1, (length(ts_select$abundance_sc)-step_ahead)),  
                     stats_only = T, norm_type = c("L2 norm"), E = E_hat_rho)
   
-  theta_hat_rho <- smap_fit[which(max(smap_fit$rho, na.rm = T)==smap_fit$rho), ]$theta
+  theta_hat_rho <- 
+    smap_fit[which(max(smap_fit$rho, na.rm = T)==smap_fit$rho), ]$theta
 
-  plot(smap_fit$theta, smap_fit$rho, type="l", xlab = "Theta", ylab="Forecast skill (rho)")
+  plot(smap_fit$theta, smap_fit$rho, type="l", 
+       xlab = "Theta", ylab="Forecast skill (rho)")
   abline(v=theta_hat_rho, col="red", lty=2)
   
 
@@ -297,17 +338,33 @@ for (i in 1:nrow(dd_ts)){
                     stats_only = F, norm_type = c("L2 norm"), 
                     E = E_hat_rho, theta = theta_hat_rho)
 
-  smap_pred  <- s_map(ts_select$abundance_sc, lib = c(1, (length(ts_select$abundance_sc)-step_ahead)), pred = c( c((length(ts_select$abundance_sc)-step_ahead-E_hat_rho)),  length(ts_select$abundance_sc)),  stats_only = F, norm_type = c("L2 norm"), E = E_hat_rho, theta = theta_hat_rho)
+smap_pred  <- 
+  s_map(ts_select$abundance_sc, lib = c(1, (length(ts_select$abundance_sc)-step_ahead)), 
+        pred = c( c((length(ts_select$abundance_sc)-step_ahead-E_hat_rho)),  
+                  length(ts_select$abundance_sc)),  
+        stats_only = F, norm_type = c("L2 norm"), 
+        E = E_hat_rho, theta = theta_hat_rho)
   
   s_maps[[i]] <- smap_pred
   
     mtext(paste0("MainID = ", dd_ts$MainID[i]), side=3, line=-2, cex=1, outer=T)
   
-   {plot(ts_select$time, ts_select$abundance_sc, type="l", xlab = "Time", ylab="Abundance" 
-         , ylim = range(min(smap_pred$model_output[[1]]$pred, ts_select$abundance_sc, na.rm=T), max(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T)))
-     points(smap_pred$model_output[[1]]$time, smap_pred$model_output[[1]]$pred, col=2,ylim =range(min(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T), max(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T)))
-      lines(smap_pred$model_output[[1]]$time, smap_pred$model_output[[1]]$pred, col=2,ylim =range(min(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T), max(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T)))
-
+   {plot(ts_select$time, ts_select$abundance_sc, type="l", 
+         xlab = "Time", ylab="Abundance", 
+         ylim = range(min(smap_pred$model_output[[1]]$pred, 
+                          ts_select$abundance_sc, na.rm=T), 
+                 max(smap_pred$model_output[[1]]$pred, 
+                     ts_select$abundance_sc, na.rm=T)))
+     points(smap_pred$model_output[[1]]$time, 
+            smap_pred$model_output[[1]]$pred, col=2, 
+            ylim =range(min(smap_pred$model_output[[1]]$pred, 
+                            ts_select$abundance_sc, na.rm=T), 
+                        max(smap_pred$model_output[[1]]$pred,
+                            ts_select$abundance_sc, na.rm=T)))
+      lines(smap_pred$model_output[[1]]$time, smap_pred$model_output[[1]]$pred, 
+            col=2, ylim =range(
+              min(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T), 
+              max(smap_pred$model_output[[1]]$pred,ts_select$abundance_sc, na.rm=T)))
 
      }
   
@@ -326,8 +383,13 @@ dev.off()
 Both embedding dimension and theta are additional features of the time series and may have explanatory value. We therefore added these metrics to our data.frame to control for the parameters in subsequent analyses. The two following plots show the distributions of D and theta across the two databases.
 
 ```{r}
-E_type <- ggplot(data=dd_ts, aes(x=E, group=type, fill=type)) + geom_density(position="identity", alpha=.3) + guides(alpha=F) + theme(legend.position = "bottom")
-theta_type <- ggplot(data=dd_ts, aes(x=theta, group=type, fill=type)) + geom_density(position="identity", alpha=.3)+ guides(alpha=F) + theme(legend.position = "bottom")
+E_type <- ggplot(data=dd_ts, aes(x=E, group=type, fill=type)) + 
+  geom_density(position="identity", alpha=.3) + 
+  guides(alpha=F) + 
+  theme(legend.position = "bottom")
+theta_type <- ggplot(data=dd_ts, aes(x=theta, group=type, fill=type)) + 
+  geom_density(position="identity", alpha=.3)+ guides(alpha=F) + 
+  theme(legend.position = "bottom")
 cowplot::plot_grid(E_type, theta_type, labels = c("A", "B"))
 
 ```
@@ -337,8 +399,11 @@ cowplot::plot_grid(E_type, theta_type, labels = c("A", "B"))
 To evaluate the forecasting error, we used the normalised RMSE (nRMSE) as an appropriate measure to compare across time series.
 
 ```{r}
-dd_ts$nrmse <- dd_ts$rmse/unlist(lapply(1:nrow(dd_ts), function(x) {max(dd_ts$data[[x]]$abundance_sc, na.rm=T) - min(dd_ts$data[[x]]$abundance_sc, na.rm=T)} ))
-# center PE and add to analysis to compare types at mean PE range rather than at zero
+dd_ts$nrmse <- 
+  dd_ts$rmse/unlist(lapply(1:nrow(dd_ts), function(x) 
+    {max(dd_ts$data[[x]]$abundance_sc, na.rm=T) - 
+      min(dd_ts$data[[x]]$abundance_sc, na.rm=T)} ))
+# center PE to compare types at mean PE range rather than at zero
 dd_ts$PE_center <- scale(dd_ts$PE, center=T, scale=F)
 ```
 
@@ -361,17 +426,33 @@ dd_ts$nrmse_sqrt <- sqrt(dd_ts$nrmse)
 dd_ts$rmse_sqrt <- sqrt(dd_ts$rmse)
 dd_ts$PE_sqrt <- sqrt(dd_ts$PE)
 # simplify data frame before model fitting
-dd_ts_simple <- select(dd_ts, c(nrmse_sqrt, rmse_sqrt, PE, type, N, zero_prop, ties_prop, number_of_gaps, E, theta, source))
+dd_ts_simple <- select(dd_ts, 
+                       c(nrmse_sqrt, 
+                         rmse_sqrt, 
+                         PE, 
+                         type, 
+                         N, 
+                         zero_prop, 
+                         ties_prop, 
+                         number_of_gaps, 
+                         E, 
+                         theta, 
+                         source))
 
-lmer_nrmse_all <- lmer(nrmse_sqrt ~ PE + type +  PE:type + N + zero_prop + ties_prop + E + theta + (1|source), data = dd_ts)
+lmer_nrmse_all <- 
+  lmer(nrmse_sqrt ~ PE + type +  
+         PE:type + N + zero_prop + ties_prop + E + theta + (1|source), 
+       data = dd_ts)
 knitr::kable(papeR::prettify(summary(lmer_nrmse_all)))
 ```
 
 ## Calculate partial R squared to assess explanatory power of individual predictors
 
 ```{r, results = "asis"}
-partial_df <- r2glmm::r2beta(lmer_nrmse_all, partial = T, method = "nsj", data = NULL)
-partial_df %>% select(Effect, Rsq, lower.CL, upper.CL) %>% mutate_if(is.numeric, round, digits=3) %>% knitr::kable()
+partial_df <- r2glmm::r2beta(lmer_nrmse_all,
+                             partial = T, method = "nsj", data = NULL)
+partial_df %>% select(Effect, Rsq, lower.CL, upper.CL) %>% 
+  mutate_if(is.numeric, round, digits=3) %>% knitr::kable()
 ```
 
 \pagebreak
@@ -380,31 +461,43 @@ partial_df %>% select(Effect, Rsq, lower.CL, upper.CL) %>% mutate_if(is.numeric,
 
 ```{r, fig.align="center", fig.height=10, fig.width=10, out.width="100%"}
 dd_ts$label <- ifelse(dd_ts$MainID == 1950, "a",
-                                     ifelse(dd_ts$MainID == 1986, "e",
-                                           ifelse(dd_ts$MainID == 1936, "d",
-                                                         ifelse(dd_ts$MainID == 278, "b", 
-                                                                       ifelse(dd_ts$MainID == 4528, "c", 
-                                                                                     ifelse(dd_ts$MainID == 155, "f", NA))))))
+                     ifelse(dd_ts$MainID == 1986, "e",
+                     ifelse(dd_ts$MainID == 1936, "d",
+                     ifelse(dd_ts$MainID == 278, "b", 
+                     ifelse(dd_ts$MainID == 4528, "c", 
+                     ifelse(dd_ts$MainID == 155, "f", NA))))))
 
 gg_panels <- function(x){
 label_id <- which(dd_ts$label==x)
-plt <- ggplot() + geom_line(aes(y=dd_ts$data[[label_id]]$abundance, x=dd_ts$data[[label_id]]$time)) + 
-  geom_line(aes(y=dd_ts$model_output[[label_id]]$pred, x=dd_ts$model_output[[label_id]]$time), colour="red") + xlab("Time") + ylab("Abundance") + ggtitle(paste0(x, ")")) 
+plt <- ggplot() + 
+  geom_line(aes(y=dd_ts$data[[label_id]]$abundance, 
+                x=dd_ts$data[[label_id]]$time)) + 
+  geom_line(aes(y=dd_ts$model_output[[label_id]]$pred, 
+                x=dd_ts$model_output[[label_id]]$time), colour="red") + 
+  xlab("Time") + 
+  ylab("Abundance") + 
+  ggtitle(paste0(x, ")")) 
 }
 
 
-p1 <-  gg_panels("a")
+p1 <- gg_panels("a")
 p2 <- gg_panels("b")
-p3 <-  gg_panels("c")
+p3 <- gg_panels("c")
 p5 <- gg_panels("d")
-p6 <-  gg_panels("e")
-p7 <-  gg_panels("f")
+p6 <- gg_panels("e")
+p7 <- gg_panels("f")
 
 # create prediction for PE
-dd_ts2 <- dd_ts[,c("nrmse", "PE", "source", "type", "label", "N", "zero_prop", "ties_prop", "E", "theta", "number_of_gaps")]
+dd_ts2 <- dd_ts[,c("nrmse", "PE", "source", 
+                   "type", "label", "N", "zero_prop", 
+                   "ties_prop", "E", "theta", "number_of_gaps")]
+
 dd_ts2$nrmse_sqrt <- sqrt(dd_ts2$nrmse)
 dd_ts2$type <- as.factor(dd_ts2$type)
-lme_fit <- nlme::lme(nrmse_sqrt ~ PE * type + + N +  zero_prop + ties_prop + E + theta, random = ~ 1 | source, data = dd_ts2)
+lme_fit <- 
+  nlme::lme(nrmse_sqrt ~ PE * type + N +  
+              zero_prop + ties_prop + E + theta, random = ~ 1 | source, 
+            data = dd_ts2)
 dat <-ggeffects::ggaverage(lme_fit, terms = c("PE"), type = c("fe"))
 dat$label <- NA
 
@@ -412,14 +505,16 @@ label <- dd_ts$label
 
 p4 <- ggplot(data=dd_ts, aes(x=PE, y=nrmse_sqrt, label=label)) + 
   geom_point(aes(colour=type), alpha=.7) +
-  xlab("Permutation entropy") + ylab("nRMSE (square root transformed)") +
+  xlab("Permutation entropy") + 
+  ylab("nRMSE (square root transformed)") +
   scale_colour_manual(values = c("black", "grey")) + 
   theme(legend.position = c(.1, .9)) + 
   geom_text(colour="red", hjust = 0, nudge_x = 0.005, size=5) +
   geom_line(data=dat, aes(x=x, y=(predicted), label=NULL)) 
 
 
-fig4 <- (p1 | p2 | p3 ) / {p4} / (p5 | p6 | p7)  + plot_layout(ncol = 1, heights = c(1, 2, 1), widths = c(1, 2, 1)) 
+fig4 <- (p1 | p2 | p3 ) / {p4} / (p5 | p6 | p7)  + 
+  plot_layout(ncol = 1, heights = c(1, 2, 1), widths = c(1, 2, 1)) 
 fig4
 
 png(here::here("Figs", "Figure_4.png"), width=2400, height=2400, res=300)
