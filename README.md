@@ -8,6 +8,8 @@ Björn C. Rall, Benjamin Rosenbaum, Andrea Tabi, Colette Ward, Richard Williams,
 **"The intrinsic predictability of ecological time series and its potential to guide forecasting"**
 accepted for Ecological Monographs.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2390198.svg)](https://doi.org/10.5281/zenodo.2390198)
+
 ## Instructions
 
 ### Simulations
